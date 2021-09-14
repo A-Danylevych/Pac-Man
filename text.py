@@ -35,7 +35,6 @@ class Text(object):
                 self.visible = False
 
 
-
 class Texts(object):
     def __init__(self):
         self.nextid = 10
@@ -57,9 +56,13 @@ class Texts(object):
         self.texts[LIVESTXT] = Text("3".zfill(3), WHITE, 0, 18 * TILEHEIGHT)
         self.texts[KILLTHEMTXT] = Text("KIll Ghosts!!", RED, 15 * TILEWIDTH, TILEHEIGHT, lifespan=30, visible=False)
         self.texts[WINTXT] = Text("YOU WIN!", YELLOW, 15 * TILEWIDTH, 2 * TILEHEIGHT, visible=False)
+        self.texts[ALGOTXT] = Text("BFS", WHITE, 35 * TILEWIDTH, 18 * TILEHEIGHT)
+        self.texts[TIMETXT] = Text("000", WHITE, 20 * TILEWIDTH, 18 * TILEHEIGHT)
         self.add_text("LIVES", WHITE, 0, 17 * TILEHEIGHT)
         self.add_text("SCORE", WHITE, 0, 0)
         self.add_text("LEVEL", WHITE, 37 * TILEWIDTH, 0)
+        self.add_text("TIME:", WHITE, 20 * TILEWIDTH, 17 * TILEHEIGHT)
+        self.add_text("ALGORITHM:", WHITE, 33 * TILEWIDTH, 17 * TILEHEIGHT)
 
     def update(self, dt):
         for text in self.texts.values():
@@ -74,6 +77,12 @@ class Texts(object):
 
     def update_score(self, score):
         self.update_text(SCORETXT, str(score).zfill(8))
+
+    def update_time(self, time):
+        self.update_text(TIMETXT, str(time))
+
+    def update_algorithm(self, algorithm):
+        self.update_text(ALGOTXT, algorithm)
 
     def update_level(self, level):
         self.update_text(LEVELTXT, str(level).zfill(3))

@@ -1,7 +1,10 @@
 from points import *
 from vector import *
 from constants import *
+from generator import Generator
 import pygame
+import numpy as np
+import random
 
 
 class MapPosition(object):
@@ -36,9 +39,14 @@ class RoadBlock(object):
                 pygame.draw.line(screen, WHITE, start_block, end_block, 4)
                 pygame.draw.circle(screen, RED, self.position.as_int(), 12)
 
+    def connected(self):
+        if not isinstance(self.directions[UP], NullRoad) or not isinstance(self.directions[DOWN], NullRoad) or not \
+                isinstance(self.directions[RIGHT], NullRoad) or not isinstance(self.directions[LEFT], NullRoad):
+            return True
+        return False
+
 
 class NullRoad(RoadBlock):
-
     def __init__(self):
         self.position = None
 
@@ -54,22 +62,84 @@ class GhostBlock(RoadBlock):
 
 
 class Map(object):
-    def __init__(self, game_map):
-        self.map = game_map
-        self.road_blocks = []
-        self.null_road_blocks = [50, NONEROADTILE]
-        self.ghosts_tiles = [INKYSPAWN, BLINKYSPAWN, PINKYSPAWN, CLYDESPAWN]
+    def __init__(self):
+        self.map = self.create_map()
         self.road_blocks_tiles = [ROADBLOCKTILE, PORTALTILE, INKYSPAWN, BLINKYSPAWN, PINKYSPAWN, CLYDESPAWN,
-                                  PACMANSPAWN]
-        self.road_tiles = [ROADTILE, GHOSTROADTILE]
+                                  PACMANSPAWN, FRUITTILE]
+        self.road_blocks = []
+        self.null_road_blocks = [NONEROADTILE]
+        self.ghosts_tiles = [INKYSPAWN, BLINKYSPAWN, PINKYSPAWN, CLYDESPAWN]
         self.map_load()
         self.connect_roads()
         self.connect_portals()
 
+    @staticmethod
+    def is_road_block(maze, row, col):
+        road_tiles = [ROADBLOCKTILE, ROADTILE]
+        if maze[row][col] == ROADTILE:
+            if maze[row+1][col] != NONEROADTILE and maze[row][col+1] != NONEROADTILE:
+                return True
+            if maze[row-1][col] != NONEROADTILE and maze[row][col-1] != NONEROADTILE:
+                return True
+            if maze[row+1][col] != NONEROADTILE and maze[row][col-1] != NONEROADTILE:
+                return True
+            if maze[row-1][col] != NONEROADTILE and maze[row][col + 1] != NONEROADTILE:
+                return True
+            if maze[row - 1][col] in road_tiles and maze[row + 1][col] in road_tiles:
+                return False
+            if maze[row][col + 1] in road_tiles and maze[row][col - 1] in road_tiles:
+                return False
+            return True
+        return False
+
+    @staticmethod
+    def add_portal(maze, col):
+        while True:
+            row = random.randint(0, NROWS - 1)
+            if maze[row][col] == ROADBLOCKTILE:
+                maze[row][col] = PORTALTILE
+                return maze
+
+    @staticmethod
+    def create_map():
+
+        game_map = np.zeros((NROWS, NCOLS), int)
+
+        generator = Generator()
+        generated_map = generator.generate(NROWS-6, NCOLS-2)
+        for row in range(3, NROWS-3, 1):
+            for col in range(1, NCOLS-1, 1):
+                game_map[row][col] = generated_map[row-3][col-1]
+
+        for row in range(NROWS):
+            for col in range(NCOLS):
+                if Map.is_road_block(game_map, row, col):
+                    game_map[row][col] = ROADBLOCKTILE
+
+        game_map = Map.add_portal(game_map, 1)
+        game_map = Map.add_portal(game_map, NCOLS-3)
+
+        count = 2
+        while count != 0:
+            row = random.randint(0, NROWS - 1)
+            col = random.randint(0, NCOLS - 1)
+            if game_map[row][col] == ROADBLOCKTILE:
+                game_map[row][col] = 22 - count
+                count -= 1
+        count = 8
+        while count != 0:
+            row = random.randint(0, NROWS - 1)
+            col = random.randint(0, NCOLS - 1)
+            if game_map[row][col] == ROADTILE:
+                game_map[row][col] = BIGPOINTTILE
+                count -= 1
+        return game_map
+
     def map_load(self):
         for row in range(len(self.map)):
             for col in range(len(self.map[row])):
-                if self.map[row][col] == ROADBLOCKTILE or self.map[row][col] == PACMANSPAWN:
+                if self.map[row][col] == ROADBLOCKTILE or self.map[row][col] == PACMANSPAWN or\
+                        self.map[row][col] == FRUITTILE:
                     map_position = MapPosition(row, col)
                     road_block = RoadBlock(map_position)
                     self.road_blocks.append(road_block)
@@ -89,7 +159,7 @@ class Map(object):
 
     def connect_portals(self):
         first, second = self.find_portals_indexes()
-        if isinstance(self.road_blocks[first].directions[RIGHT], NullRoad):
+        if self.road_blocks[first].map_position.col > self.road_blocks[second].map_position.col:
             self.road_blocks[first].directions[RIGHT] = self.road_blocks[second]
             self.road_blocks[second].directions[LEFT] = self.road_blocks[first]
         else:

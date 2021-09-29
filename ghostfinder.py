@@ -9,6 +9,7 @@ class GhostFinder(object):
         self.pacman = pacman
         self.ghosts = ghosts.ghosts.values()
         self.current = UCS
+        self.ghosts_indexes = []
         self.paths = []
         self.targets = []
         self.graph = {}
@@ -26,6 +27,15 @@ class GhostFinder(object):
             self.current = DFS
 
     def update(self):
+        index = 0
+        for ghost in self.ghosts_indexes:
+            if len(self.paths) == index:
+                break
+            path = self.paths[index]
+            path.pop()
+            path.reverse()
+            ghost.goal = path
+            index += 1
         self.timer.start()
         self.paths = []
         start_v = self.find_start()
@@ -87,8 +97,8 @@ class GhostFinder(object):
         for ghost in self.ghosts:
             for item in self.road_blocks:
                 if item == ghost.road_block:
-                    if not isinstance(item, GhostBlock):
-                        self.targets.append(item)
+                    self.targets.append(item)
+                    self.ghosts_indexes.append(ghost)
 
     def dfs_paths(self, start, goal):
         stack = [(start, [start])]
@@ -128,16 +138,16 @@ class GhostFinder(object):
         for item in self.road_blocks:
             v_list = []
             for direction in item.directions.values():
-                if not isinstance(direction, NullRoad) and not isinstance(direction, GhostBlock):
+                if not isinstance(direction, NullRoad):
                     v_list.append(direction)
             self.graph[item] = set(v_list)
 
     def create_weighted_graph(self):
         for item in self.road_blocks:
-            if not isinstance(item, NullRoad) and not isinstance(item, GhostBlock):
+            if not isinstance(item, NullRoad):
                 self.weighted_graph[item] = {}
                 for direction in item.directions.values():
-                    if not isinstance(direction, NullRoad) and not isinstance(direction, GhostBlock):
+                    if not isinstance(direction, NullRoad):
                         if isinstance(item, PortalBlock) and isinstance(direction, PortalBlock):
                             self.weighted_graph[item][direction] = 0
                         else:
@@ -152,4 +162,5 @@ class GhostFinder(object):
     def find_shortest_cost(self, paths):
         if paths is not None:
             path = min(paths, key=lambda x: x[1], default=None)
-            self.paths.append(path[0])
+            if path is not None:
+                self.paths.append(path[0])

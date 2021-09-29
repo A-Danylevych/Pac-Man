@@ -44,7 +44,7 @@ class GameController(object):
         self.points = Points(self.road)
         self.points_start_number = len(self.points.points)
         self.ghosts = Ghosts(self.road)
-        self.pacman = Pacman(self.road.get_spawn_position())
+        self.pacman = Pacman(self.road.get_spawn_position(), self.road.road_blocks)
         self.texts = Texts()
         self.texts.update_level(self.level)
         self.texts.update_score(self.score)
@@ -147,6 +147,7 @@ class GameController(object):
             self.clock.tick(20)
         if key_pressed[K_x]:
             self.texts.update_time(self.ghosts_finder.timer.elapsed)
+            self.pacman.goal_finder.get_goal_road(self.pacman.road_block)
             self.clock.tick(20)
 
     def render(self):

@@ -49,7 +49,7 @@ class MazeSprites(object):
                     x = 13
                     sprite = self.get_image(x, 0)
                     background.blit(sprite, (col * TILEHEIGHT, row * TILEWIDTH))
-                elif self.map.map[row][col] in [16, 17, 18, 19]:
+                elif self.map.map[row][col] in [16, 17, 18, 19, 22]:
                     x = 14
                     sprite = self.get_image(x, 0)
                     background.blit(sprite, (col * TILEHEIGHT, row * TILEWIDTH))

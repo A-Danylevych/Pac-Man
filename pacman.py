@@ -5,10 +5,11 @@ from constants import *
 from road import *
 from ghost import *
 from sprites import PacmanSprite
+from queue import PriorityQueue
 
 
 class Pacman(object):
-    def __init__(self, road_block):
+    def __init__(self, road_block, road_blocks):
         self.position = None
         self.name = PACMAN
         self.positon = None
@@ -24,11 +25,43 @@ class Pacman(object):
         self.set_position()
         self.image = None
         self.sprite = PacmanSprite(self)
+        self.goal_finder = GoalFinder(road_blocks)
+        self.goal_road = []
 
     def set_position(self):
         self.position = self.road_block.position.copy()
 
+    def find_block_direction(self):
+        for key, value in self.road_block.directions.items():
+            if value == self.target_block:
+                return key
+        return STOP
+
     def update(self, dt):
+        if len(self.goal_road) == 0:
+            self.goal_road = self.goal_finder.get_goal_road(self.road_block)
+            self.target_block = self.goal_road.pop(0)
+            self.direction = self.find_block_direction()
+            self.set_position()
+
+        self.sprite.update(dt)
+
+        self.position += self.directions[self.direction] * self.speed * dt
+
+
+        if isinstance(self.target_block, PortalBlock) and isinstance(self.road_block, PortalBlock):
+            self.road_block = self.target_block
+            self.set_position()
+
+        if self.is_exceeded_the_boundaries():
+            self.road_block = self.target_block
+            self.set_position()
+            if not len(self.goal_road) == 0:
+                self.target_block = self.goal_road.pop(0)
+                self.direction = self.find_block_direction()
+                self.set_position()
+
+    def player_update(self, dt):
         self.sprite.update(dt)
         direction = self.get_valid_key
         self.position += self.directions[self.direction] * self.speed * dt
@@ -125,5 +158,80 @@ class Pacman(object):
 
     def respawn(self):
         self.road_block = self.target_block = self.spawn_block
+        self.goal_road = []
 
 
+def heuristic(a, b):
+    return abs(a.position.x - b.position.x) + abs(a.position.y - b.position.y)
+
+
+class GoalFinder(object):
+    def __init__(self, road_blocks):
+        self.road_blocks = road_blocks
+        self.visited = []
+        self.graph = {}
+        self.create_weighted_graph()
+
+    def create_weighted_graph(self):
+        for item in self.road_blocks:
+            if not isinstance(item, NullRoad) and not isinstance(item, GhostBlock):
+                self.graph[item] = {}
+                for direction in item.directions.values():
+                    if not isinstance(direction, NullRoad) and not isinstance(direction, GhostBlock):
+                        if isinstance(item, PortalBlock) and isinstance(direction, PortalBlock):
+                            self.graph[item][direction] = 0
+                        else:
+                            self.graph[item][direction] = \
+                                (item.position - direction.position).magnitude_squared()
+
+    def get_random_goal(self):
+        while True:
+            block = random.choice(list(self.graph.keys()))
+            if block not in self.visited:
+                return block
+
+    def get_goal_road(self, position):
+        target = self.get_random_goal()
+        path = self.a_star(position, target)
+        path = self.get_road(path, target)
+        return path
+
+    def a_star(self, start, goal):
+        queue = [(0, start)]
+        came_from = {}
+        cost_so_far = {}
+        came_from[start] = None
+        cost_so_far[start] = 0
+
+        while queue:
+            queue = sorted(queue, key=lambda x: x[0])
+            (priority, vertex) = queue.pop(0)
+
+            if vertex == goal:
+                return came_from
+
+            for next in self.graph[vertex].keys():
+                new_cost = cost_so_far[vertex] + self.graph[vertex][next]
+                if next not in cost_so_far or new_cost < cost_so_far[next]:
+                    cost_so_far[next] = new_cost
+                    priority = new_cost + heuristic(goal, next)
+                    queue.append((priority, next))
+                    came_from[next] = vertex
+
+    def get_key(self, val, dict):
+        for key, value in dict.items():
+            if val == value:
+                return key
+
+    def get_road(self, path, goal):
+        road = [goal]
+        current = goal
+
+        while True:
+            current = path[current]
+            if current is None:
+                break
+            road.append(current)
+        road.reverse()
+        road.pop(0)
+        return road

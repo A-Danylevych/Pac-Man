@@ -65,10 +65,10 @@ class Map(object):
     def __init__(self):
         self.map = self.create_map()
         self.road_blocks_tiles = [ROADBLOCKTILE, PORTALTILE, INKYSPAWN, BLINKYSPAWN, PINKYSPAWN, CLYDESPAWN,
-                                  PACMANSPAWN, FRUITTILE]
+                                  PACMANSPAWN, FRUITTILE, SOMESPAWN]
         self.road_blocks = []
         self.null_road_blocks = [NONEROADTILE]
-        self.ghosts_tiles = [INKYSPAWN, BLINKYSPAWN, PINKYSPAWN, CLYDESPAWN]
+        self.ghosts_tiles = [INKYSPAWN, BLINKYSPAWN, PINKYSPAWN, CLYDESPAWN, SOMESPAWN]
         self.map_load()
         self.connect_roads()
         self.connect_portals()
@@ -224,6 +224,7 @@ class Map(object):
 
     def ghosts_positions(self):
         ghosts = {}
+        ghost_id = 10
         for row in range(len(self.map)):
             for col in range(len(self.map[row])):
                 if self.map[row][col] == INKYSPAWN:
@@ -234,6 +235,9 @@ class Map(object):
                     ghosts[PINKY] = self.filter(row, col)
                 elif self.map[row][col] == CLYDESPAWN:
                     ghosts[CLYDE] = self.filter(row, col)
+                elif self.map[row][col] == SOMESPAWN:
+                    ghosts[ghost_id] = self.filter(row, col)
+                    ghost_id += 1
         return ghosts
 
     def get_spawn_position(self):

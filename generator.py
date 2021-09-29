@@ -53,12 +53,20 @@ class Generator(object):
             game_map = pathfinder.move(game_map, nrows, ncols)
 
         count = 4
+        count_2 = ADDITIONALGHOSTS
         while count != 0:
             row = random.randint(0, nrows-1)
             col = random.randint(0, ncols-1)
             if game_map[row][col] == NONEROADTILE and has_neibors(game_map, row, col, nrows, ncols):
                 game_map[row][col] = 20 - count
                 count -= 1
+
+        while count_2 != 0:
+            row = random.randint(0, nrows - 1)
+            col = random.randint(0, ncols - 1)
+            if game_map[row][col] == NONEROADTILE and has_neibors(game_map, row, col, nrows, ncols):
+                game_map[row][col] = 22
+                count_2 -= 1
 
         return game_map
 

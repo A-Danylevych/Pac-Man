@@ -8,9 +8,9 @@ from sprites import GhostSprite
 
 
 class Ghost(object):
-    def __init__(self, road_block, sprite_file):
+    def __init__(self, name, road_block, sprite_file):
         self.position = None
-        self.name = GHOST
+        self.name = name
         self.positon = None
         self.directions = {STOP: Vector(), UP: Vector(0, -1), DOWN: Vector(0, 1), LEFT: Vector(-1, 0),
                            RIGHT: Vector(1, 0)}
@@ -27,6 +27,7 @@ class Ghost(object):
         self.mode_time = 30
         self.spawn_block = road_block
         self.image = None
+        self.goal = None
         self.sprite = GhostSprite(self, sprite_file)
 
     def set_position(self):
@@ -39,6 +40,9 @@ class Ghost(object):
             return
 
         self.update_mode(dt)
+        if self.direction == STOP:
+            self.get_direction()
+            return
         self.position += self.directions[self.direction] * self.speed * dt
 
         if isinstance(self.target_block, PortalBlock) and isinstance(self.road_block, PortalBlock):
@@ -51,14 +55,27 @@ class Ghost(object):
             self.set_position()
 
     def get_direction(self):
-        directions = self.valid_directions()
-        direction = self.get_random_direction(directions)
-        self.target_block = self.get_new_target_block(direction)
+        direction = self.direction_method()
         if self.target_block is self.road_block:
-            self.target_block = self.get_new_target_block(self.direction)
+            self.direction = self.direction_method()
         else:
             self.direction = direction
 
+    def direction_method(self):
+        if not self.mode == DEFAULT or self.goal is None or len(self.goal) == 0:
+            directions = self.valid_directions()
+            direction = self.get_random_direction(directions)
+            self.target_block = self.get_new_target_block(direction)
+            return direction
+        else:
+            self.target_block = self.goal.pop(0)
+            return self.find_block_direction()
+
+    def find_block_direction(self):
+        for key, value in self.road_block.directions.items():
+            if value == self.target_block:
+                return key
+        return STOP
 
     def update_mode(self, dt):
         self.timer += dt
@@ -147,7 +164,10 @@ class Ghosts(object):
     def init_ghosts(self):
         ghosts_tiles = self.map.ghosts_positions()
         for ghost_name in ghosts_tiles.keys():
-            self.ghosts[ghost_name] = Ghost(ghosts_tiles[ghost_name], str(ghost_name) + ".png")
+            if ghost_name >= 10:
+                self.ghosts[ghost_name] = Ghost(ghost_name, ghosts_tiles[ghost_name], str(4) + ".png")
+            else:
+                self.ghosts[ghost_name] = Ghost(ghost_name, ghosts_tiles[ghost_name], str(ghost_name) + ".png")
 
     def weak_mode(self):
         for ghost in self.ghosts.values():

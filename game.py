@@ -147,7 +147,6 @@ class GameController(object):
             self.clock.tick(20)
         if key_pressed[K_x]:
             self.texts.update_time(self.ghosts_finder.timer.elapsed)
-            self.pacman.goal_finder.get_goal_road(self.pacman.road_block)
             self.clock.tick(20)
 
     def render(self):

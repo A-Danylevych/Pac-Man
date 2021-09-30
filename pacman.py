@@ -1,18 +1,17 @@
-import pygame
-from pygame.locals import *
-from vector import Vector
-from constants import *
 from road import *
 from ghost import *
 from sprites import PacmanSprite
-from queue import PriorityQueue
+from pygame.locals import *
+from vector import Vector
+from constants import *
+import pygame
 
 
 class Pacman(object):
     def __init__(self, road_block, road_blocks):
         self.position = None
         self.name = PACMAN
-        self.positon = None
+        self.position = None
         self.directions = {STOP: Vector(), UP: Vector(0, -1), DOWN: Vector(0, 1), LEFT: Vector(-1, 0),
                            RIGHT: Vector(1, 0)}
         self.direction = STOP
@@ -40,6 +39,7 @@ class Pacman(object):
     def update(self, dt):
         if len(self.goal_road) == 0:
             self.goal_road = self.goal_finder.get_goal_road(self.road_block)
+            self.goal_finder.visit_block(self.road_block)
             self.target_block = self.goal_road.pop(0)
             self.direction = self.find_block_direction()
             self.set_position()
@@ -48,18 +48,23 @@ class Pacman(object):
 
         self.position += self.directions[self.direction] * self.speed * dt
 
-
         if isinstance(self.target_block, PortalBlock) and isinstance(self.road_block, PortalBlock):
             self.road_block = self.target_block
+            self.goal_finder.visit_block(self.road_block)
             self.set_position()
 
         if self.is_exceeded_the_boundaries():
             self.road_block = self.target_block
+            self.goal_finder.visit_block(self.road_block)
             self.set_position()
             if not len(self.goal_road) == 0:
                 self.target_block = self.goal_road.pop(0)
                 self.direction = self.find_block_direction()
                 self.set_position()
+            if len(self.goal_road) == 0:
+                self.goal_road = self.goal_finder.get_goal_road(self.target_block)
+                if not self.goal_road:
+                    self.goal_road = [self.target_block]
 
     def player_update(self, dt):
         self.sprite.update(dt)
@@ -172,6 +177,10 @@ class GoalFinder(object):
         self.graph = {}
         self.create_weighted_graph()
 
+    def visit_block(self, road_block):
+        if road_block not in self.visited:
+            self.visited.append(road_block)
+
     def create_weighted_graph(self):
         for item in self.road_blocks:
             if not isinstance(item, NullRoad) and not isinstance(item, GhostBlock):
@@ -190,10 +199,10 @@ class GoalFinder(object):
             if block not in self.visited:
                 return block
 
-    def get_goal_road(self, position):
-        target = self.get_random_goal()
-        path = self.a_star(position, target)
-        path = self.get_road(path, target)
+    def get_goal_road(self, start):
+        goal = self.get_random_goal()
+        path = self.a_star(start, goal)
+        path = self.get_road(path, start, goal)
         return path
 
     def a_star(self, start, goal):
@@ -218,20 +227,11 @@ class GoalFinder(object):
                     queue.append((priority, next))
                     came_from[next] = vertex
 
-    def get_key(self, val, dict):
-        for key, value in dict.items():
-            if val == value:
-                return key
-
-    def get_road(self, path, goal):
-        road = [goal]
+    def get_road(self, path, start, goal):
+        road = []
         current = goal
-
-        while True:
-            current = path[current]
-            if current is None:
-                break
+        while current != start:
             road.append(current)
+            current = path[current]
         road.reverse()
-        road.pop(0)
         return road

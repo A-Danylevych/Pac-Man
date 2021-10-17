@@ -8,7 +8,7 @@ from sprites import GhostSprite
 
 
 class Ghost(object):
-    def __init__(self, name, road_block, sprite_file):
+    def __init__(self, name, road_block, sprite_file, random):
         self.position = None
         self.name = name
         self.positon = None
@@ -29,6 +29,7 @@ class Ghost(object):
         self.image = None
         self.goal = None
         self.sprite = GhostSprite(self, sprite_file)
+        self.full_random = random
 
     def set_position(self):
         self.position = self.road_block.position.copy()
@@ -62,7 +63,7 @@ class Ghost(object):
             self.direction = direction
 
     def direction_method(self):
-        if not self.mode == DEFAULT or self.goal is None or len(self.goal) == 0:
+        if not self.mode == DEFAULT or self.goal is None or len(self.goal) == 0 or self.full_random:
             directions = self.valid_directions()
             direction = self.get_random_direction(directions)
             self.target_block = self.get_new_target_block(direction)
@@ -148,10 +149,10 @@ class Ghost(object):
 
 
 class Ghosts(object):
-    def __init__(self, game_map):
+    def __init__(self, game_map, count, random_count):
         self.ghosts = {}
         self.map = game_map
-        self.init_ghosts()
+        self.init_ghosts(count, random_count)
 
     def render(self, screen):
         for ghost in self.ghosts.values():
@@ -161,13 +162,21 @@ class Ghosts(object):
         for ghost in self.ghosts.values():
             ghost.update(dt)
 
-    def init_ghosts(self):
+    def init_ghosts(self, count, random_count):
         ghosts_tiles = self.map.ghosts_positions()
+        k = 0
+        random = True
         for ghost_name in ghosts_tiles.keys():
+            if k == random_count:
+                random = False
+            if k == count:
+                break
             if ghost_name >= 10:
-                self.ghosts[ghost_name] = Ghost(ghost_name, ghosts_tiles[ghost_name], str(4) + ".png")
+                self.ghosts[ghost_name] = Ghost(ghost_name, ghosts_tiles[ghost_name], str(4) + ".png", random)
+                k += 1
             else:
-                self.ghosts[ghost_name] = Ghost(ghost_name, ghosts_tiles[ghost_name], str(ghost_name) + ".png")
+                self.ghosts[ghost_name] = Ghost(ghost_name, ghosts_tiles[ghost_name], str(ghost_name) + ".png", random)
+                k += 1
 
     def weak_mode(self):
         for ghost in self.ghosts.values():
@@ -176,3 +185,9 @@ class Ghosts(object):
     def respawn(self):
         for ghost in self.ghosts.values():
             ghost.respawn()
+
+    def get_road_blocks(self):
+        blocks = []
+        for ghost in self.ghosts.values():
+            blocks.append(ghost.road_block)
+        return blocks

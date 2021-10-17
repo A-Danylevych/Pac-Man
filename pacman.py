@@ -8,7 +8,7 @@ import pygame
 
 
 class Pacman(object):
-    def __init__(self, road_block, road_blocks):
+    def __init__(self, road_block, road_blocks, ghosts, points, algo):
         self.position = None
         self.name = PACMAN
         self.position = None
@@ -24,7 +24,7 @@ class Pacman(object):
         self.set_position()
         self.image = None
         self.sprite = PacmanSprite(self)
-        self.goal_finder = GoalFinder(road_blocks)
+        self.goal_finder = GoalFinder(road_blocks, ghosts, points, algo)
         self.goal_road = []
 
     def set_position(self):
@@ -37,10 +37,10 @@ class Pacman(object):
         return STOP
 
     def update(self, dt):
-        if len(self.goal_road) == 0:
+        if self.goal_road is None:
             self.goal_road = self.goal_finder.get_goal_road(self.road_block)
             self.goal_finder.visit_block(self.road_block)
-            self.target_block = self.goal_road.pop(0)
+            self.target_block = self.goal_road
             self.direction = self.find_block_direction()
             self.set_position()
 
@@ -57,14 +57,15 @@ class Pacman(object):
             self.road_block = self.target_block
             self.goal_finder.visit_block(self.road_block)
             self.set_position()
-            if not len(self.goal_road) == 0:
-                self.target_block = self.goal_road.pop(0)
-                self.direction = self.find_block_direction()
-                self.set_position()
-            if len(self.goal_road) == 0:
-                self.goal_road = self.goal_finder.get_goal_road(self.target_block)
-                if not self.goal_road:
-                    self.goal_road = [self.target_block]
+            self.goal_road = None
+            # if not len(self.goal_road) == 0:
+            #     self.target_block = self.goal_road.pop(0)
+            #     self.direction = self.find_block_direction()
+            #     self.set_position()
+            # if len(self.goal_road) == 0:
+            #     self.goal_road = self.goal_finder.get_goal_road(self.target_block)
+            #     if not self.goal_road:
+            #         self.goal_road = [self.target_block]
 
     def player_update(self, dt):
         self.sprite.update(dt)
@@ -171,11 +172,16 @@ def heuristic(a, b):
 
 
 class GoalFinder(object):
-    def __init__(self, road_blocks):
+    def __init__(self, road_blocks, ghosts, points, algo):
         self.road_blocks = road_blocks
         self.visited = []
         self.graph = {}
         self.create_weighted_graph()
+        self.ghosts = ghosts
+        self.points = points
+        self.max = 100000000
+        self.min = -100000000
+        self.algo = algo
 
     def visit_block(self, road_block):
         if road_block not in self.visited:
@@ -200,10 +206,15 @@ class GoalFinder(object):
                 return block
 
     def get_goal_road(self, start):
-        goal = self.get_random_goal()
-        path = self.a_star(start, goal)
-        path = self.get_road(path, start, goal)
-        return path
+        if self.algo == ASTAR:
+            goal = self.get_random_goal()
+            path = self.a_star(start, goal)
+            path = self.get_road(path, start, goal)
+        if self.algo == MINIMAX:
+            _, path = self.minimax(3, start, True, self.min, self.max, [start])
+        if self.algo == EXPECTIMAX:
+            _, path = self.expectimax(5, start, [start], True)
+        return path[1]
 
     def a_star(self, start, goal):
         queue = [(0, start)]
@@ -226,6 +237,109 @@ class GoalFinder(object):
                     priority = new_cost + heuristic(goal, next)
                     queue.append((priority, next))
                     came_from[next] = vertex
+
+    def minimax(self, depth, current, maximizing_player, alpha, beta, path):
+
+        neighbour_count = list(set(self.graph[current].keys()) - set(path))
+        if depth == 0 or len(neighbour_count) == 0:
+            return self.get_score(path)
+
+        if maximizing_player:
+
+            best = self.min
+            best_path = path.copy()
+            placed = False
+
+            for vertex in list(set(self.graph[current].keys()) - set(path)):
+                path.append(vertex)
+                val = self.minimax(depth - 1, vertex, False, alpha, beta, path)
+                best = max(best, val[0])
+                if best == val[0]:
+                    if placed:
+                        best_path.pop()
+                    best_path.append(vertex)
+                    placed = True
+                path.remove(vertex)
+                alpha = max(alpha, best)
+                if beta <= alpha:
+                    break
+            return best, best_path
+
+        else:
+            best = self.max
+            best_path = path.copy()
+            placed = False
+
+            for vertex in list(set(self.graph[current].keys()) - set(path)):
+                path.append(vertex)
+                val = self.minimax(depth - 1, vertex, True, alpha, beta, path)
+                best = min(best, val[0])
+                if best == val[0]:
+                    if placed:
+                        best_path.pop()
+                    best_path.append(vertex)
+                    placed = True
+                path.remove(vertex)
+                beta = min(beta, best)
+
+                if beta <= alpha:
+                    break
+            return best, best_path
+
+    def expectimax(self, depth, current, path, is_max):
+        neighbour_count = list(set(self.graph[current].keys()) - set(path))
+        if depth == 0 or len(neighbour_count) == 0:
+            return self.get_score(path)
+
+        if is_max:
+            best = self.min
+            best_path = path.copy()
+
+            placed = False
+            for vertex in self.graph[current].keys():
+                path.append(vertex)
+                val = self.expectimax(depth-1, vertex, path, False)
+                if best < val[0]:
+                    if placed:
+                        best_path.pop()
+                    best_path.append(vertex)
+                    placed = True
+                    best = val[0]
+                path.remove(vertex)
+            return best, best_path
+        else:
+            best = 0
+            best_path = path.copy()
+
+            count = 0
+            for vertex in self.graph[current].keys():
+                path.append(vertex)
+                count += 1
+                best += self.expectimax(depth - 1, vertex, path, True)[0]
+                path.remove(vertex)
+            if count != 0:
+                best = best/count
+            return best, best_path
+
+
+    def get_score(self, path):
+        priority = 0
+        for vertex in path:
+            index = path.index(vertex)
+            if index + 1 < len(path):
+                next = path[index + 1]
+                for point in self.points:
+                    if vertex.position.x == next.position.x == point.position.x:
+                        if point.position.y in range(vertex.position.y, next.position.y) or \
+                                point.position.y in range(next.position.y, vertex.position.y):
+                            priority += 10
+                    if vertex.position.y == next.position.y == point.position.y:
+                        if point.position.x in range(vertex.position.x, next.position.x) or \
+                                point.position.x in range(next.position.x, vertex.position.x):
+                            priority += 10
+            if vertex in self.ghosts.get_road_blocks():
+                priority -= 100
+        return priority, path
 
     def get_road(self, path, start, goal):
         road = []

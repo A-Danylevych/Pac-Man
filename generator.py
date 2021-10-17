@@ -32,6 +32,32 @@ def has_neibors(maze, row, col, nrows, ncols):
 
 class Generator(object):
     @staticmethod
+    def has_only_one_neighbor(maze, nrows, ncols, row, col):
+        count = 0
+        if row+1<nrows:
+            if maze[row+1][col] != NONEROADTILE:
+                count += 1
+        if col+1<ncols:
+            if maze[row][col+1] != NONEROADTILE:
+                count += 1
+        if row-1>=0:
+            if maze[row-1][col] != NONEROADTILE:
+                count += 1
+        if col-1>=0:
+            if maze[row][col-1] != NONEROADTILE:
+                count += 1
+        return count == 1
+
+    @staticmethod
+    def make_consistent(maze, nrows, ncols):
+        for row in range(nrows):
+            for col in range(ncols):
+                if maze[row][col] != NONEROADTILE:
+                    while Generator.has_only_one_neighbor(maze,nrows,ncols,row,col):
+                        finder = PathFinder(col, row)
+                        maze = finder.one_side_move(maze, nrows, ncols)
+        return maze
+    @staticmethod
     def generate(nrows, ncols):
         game_map = np.zeros((nrows, ncols), int)
         x_arr = np.zeros(ncols, int)
@@ -52,6 +78,7 @@ class Generator(object):
         while not is_maze(game_map, nrows, ncols):
             game_map = pathfinder.move(game_map, nrows, ncols)
 
+        game_map = Generator.make_consistent(game_map, nrows, ncols)
         count = 4
         count_2 = ADDITIONALGHOSTS
         while count != 0:
@@ -111,3 +138,43 @@ class PathFinder(object):
             self.y += 2
 
         return maze
+
+    def one_side_move(self, maze, nrows, ncols):
+        directions = []
+        if self.x > 0:
+            directions.append(LEFT)
+        if self.x < ncols - 2:
+            directions.append(RIGHT)
+        if self.y > 0:
+            directions.append(UP)
+        if self.y < nrows - 2:
+            directions.append(DOWN)
+
+        direction = get_random(directions)
+
+        while True:
+            if direction == LEFT:
+                self.x -= 1
+                maze[self.y][self.x] = ROADTILE
+                if maze[self.y][self.x - 1] == ROADTILE:
+                    break
+
+            elif direction == RIGHT:
+                self.x += 1
+                maze[self.y][self.x] = ROADTILE
+                if maze[self.y][self.x + 1] == ROADTILE:
+                    break
+
+            elif direction == UP:
+
+                self.y -= 1
+                maze[self.y][self.x] = ROADTILE
+                if maze[self.y - 1][self.x] == ROADTILE:
+                    break
+            elif direction == DOWN:
+                self.y += 1
+                maze[self.y][self.x] = ROADTILE
+                if maze[self.y + 1][self.x] == ROADTILE:
+                    break
+        return maze
+

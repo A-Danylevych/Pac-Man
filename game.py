@@ -10,11 +10,14 @@ from fruit import Fruit
 from text import Texts
 from sprites import *
 from ghostfinder import *
+import csv
+from timer import Timer
 
 
 class GameController(object):
     def __init__(self):
         pygame.init()
+        self.algo = EXPECTIMAX
         self.screen = pygame.display.set_mode(SCREENSIZE, 0, 32)
         self.clock = pygame.time.Clock()
         self.background = None
@@ -29,6 +32,7 @@ class GameController(object):
         self.texts = None
         self.maze_sprites = None
         self.lives = 3
+        self.timer = Timer()
         pygame.display.set_caption(GAMENAME)
         self.ghosts_finder = None
 
@@ -43,8 +47,9 @@ class GameController(object):
         self.background = self.maze_sprites.make_background(self.background)
         self.points = Points(self.road)
         self.points_start_number = len(self.points.points)
-        self.ghosts = Ghosts(self.road)
-        self.pacman = Pacman(self.road.get_spawn_position(), self.road.road_blocks)
+        self.ghosts = Ghosts(self.road, 4, 2)
+        self.pacman = Pacman(self.road.get_spawn_position(), self.road.road_blocks, self.ghosts, self.points.points,
+                             self.algo)
         self.texts = Texts()
         self.texts.update_level(self.level)
         self.texts.update_score(self.score)
@@ -52,6 +57,7 @@ class GameController(object):
         self.texts.hide_text(KILLTHEMTXT)
         self.texts.hide_text(WINTXT)
         self.ghosts_finder = GhostFinder(self.road.road_blocks, self.pacman, self.ghosts)
+        self.timer.start_seconds()
 
     def update(self):
         if self.lives != 0:
@@ -91,6 +97,7 @@ class GameController(object):
         if self.level == 5:
             self.end_game()
         self.texts.update_level(self.level)
+        self.write_statistics(True)
         self.start_game()
 
     def end_game(self):
@@ -108,6 +115,8 @@ class GameController(object):
     def game_over(self):
         self.texts.show_text(GAMEOVERTXT)
         self.texts.texts[GAMEOVERTXT].render(self.screen)
+        self.write_statistics(False)
+        self.restart()
 
     def check_ghosts(self):
         ghost = self.pacman.get_ghost(self.ghosts.ghosts.values())
@@ -137,10 +146,8 @@ class GameController(object):
                 exit()
         key_pressed = pygame.key.get_pressed()
         if key_pressed[K_SPACE]:
-            self.lives = 3
-            self.score = 0
-            self.level = 1
-            self.start_game()
+            self.write_statistics(False)
+            self.restart()
         if key_pressed[K_z]:
             self.ghosts_finder.change_algorithm()
             self.texts.update_algorithm(self.ghosts_finder.current)
@@ -148,6 +155,12 @@ class GameController(object):
         if key_pressed[K_x]:
             self.texts.update_time(self.ghosts_finder.timer.elapsed)
             self.clock.tick(20)
+
+    def restart(self):
+        self.lives = 3
+        self.score = 0
+        self.level = 1
+        self.start_game()
 
     def render(self):
         self.screen.blit(self.background, (0, 0))
@@ -159,3 +172,10 @@ class GameController(object):
         if self.fruit is not None:
             self.fruit.render(self.screen)
         pygame.display.update()
+
+    def write_statistics(self, winning):
+        data = [winning, self.timer.elapsed, self.score, self.algo]
+
+        with open('statistics.csv', 'a', encoding='UTF8') as f:
+            writer = csv.writer(f)
+            writer.writerow(data)

@@ -43,7 +43,7 @@ class GameController(object):
         self.update(direction)
 
         # check for score
-        reward = 0.1
+        reward = 0
         if cur_score < self.score:
             reward = 1
         if cur_lives > self.lives:

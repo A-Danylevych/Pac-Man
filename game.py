@@ -140,7 +140,6 @@ class GameController(object):
 
     def end_game(self):
         self.texts.show_text(WINTXT)
-        self.lives = 0
         self.game_over = True
 
     def check_death(self):

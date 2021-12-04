@@ -141,6 +141,7 @@ class GameController(object):
     def end_game(self):
         self.texts.show_text(WINTXT)
         self.lives = 0
+        self.game_over = True
 
     def check_death(self):
         self.ghosts.respawn()
@@ -148,9 +149,9 @@ class GameController(object):
         self.lives -= 1
         self.texts.update_lives(self.lives)
         if self.lives == 0:
-            self.game_over = True
+            self.loosing()
 
-    def game_over(self):
+    def loosing(self):
         self.texts.show_text(GAMEOVERTXT)
         self.texts.texts[GAMEOVERTXT].render(self.screen)
         self.write_statistics(False)

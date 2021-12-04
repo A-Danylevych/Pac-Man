@@ -15,6 +15,42 @@ from timer import Timer
 
 
 class GameController(object):
+
+    @staticmethod
+    def get_state():
+        return pygame.surfarray.array3d(pygame.display.get_surface())
+
+    def play_step(self, input_actions):
+        if sum(input_actions) != 1:
+            raise ValueError('Multiple input actions!')
+
+        # input_actions[0] == 1: do nothing
+        # input_actions[1] == 1: Up
+        # input_actions[2] == 1: Right
+        # input_actions[3] == 1: Down
+        # input_actions[4] == 1: Left
+        direction = STOP
+        if input_actions[1] == 1:
+            direction = UP
+        if input_actions[2] == 1:
+            direction = RIGHT
+        if input_actions[3] == 1:
+            direction = DOWN
+        if input_actions[4] == 1:
+            direction = LEFT
+        cur_score = self.score
+        cur_lives = self.lives
+        self.update(direction)
+
+        # check for score
+        reward = 0.1
+        if cur_score < self.score:
+            reward = 1
+        if cur_lives > self.lives:
+            reward = -1
+
+        return reward, self.game_over, self.score
+
     def __init__(self):
         pygame.init()
         self.algo = EXPECTIMAX
@@ -35,19 +71,21 @@ class GameController(object):
         self.timer = Timer()
         pygame.display.set_caption(GAMENAME)
         self.ghosts_finder = None
+        self.game_over = False
 
     def set_background(self):
         self.background = pygame.surface.Surface(SCREENSIZE).convert()
         self.background.fill(BLACK)
 
     def start_game(self):
+        self.game_over = False
         self.set_background()
         self.road = Map()
         self.maze_sprites = MazeSprites(self.road)
         self.background = self.maze_sprites.make_background(self.background)
         self.points = Points(self.road)
         self.points_start_number = len(self.points.points)
-        self.ghosts = Ghosts(self.road, 4, 2)
+        self.ghosts = Ghosts(self.road, 4, 0)
         self.pacman = Pacman(self.road.get_spawn_position(), self.road.road_blocks, self.ghosts, self.points.points,
                              self.algo)
         self.texts = Texts()
@@ -59,10 +97,10 @@ class GameController(object):
         self.ghosts_finder = GhostFinder(self.road.road_blocks, self.pacman, self.ghosts)
         self.timer.start_seconds()
 
-    def update(self):
+    def update(self, direction):
         if self.lives != 0:
             dt = self.clock.tick(30) / 1000.0
-            self.pacman.update(dt)
+            self.pacman.player_update(dt, direction)
             self.ghosts.update(dt)
             if self.fruit is not None:
                 self.fruit.update(dt)
@@ -110,13 +148,13 @@ class GameController(object):
         self.lives -= 1
         self.texts.update_lives(self.lives)
         if self.lives == 0:
-            self.game_over()
+            self.game_over = True
 
     def game_over(self):
         self.texts.show_text(GAMEOVERTXT)
         self.texts.texts[GAMEOVERTXT].render(self.screen)
         self.write_statistics(False)
-        self.restart()
+        self.game_over = True
 
     def check_ghosts(self):
         ghost = self.pacman.get_ghost(self.ghosts.ghosts.values())
@@ -168,14 +206,15 @@ class GameController(object):
         self.points.render(self.screen)
         self.ghosts.render(self.screen)
         self.texts.render(self.screen)
-        self.ghosts_finder.render(self.screen)
+        #self.ghosts_finder.render(self.screen)
         if self.fruit is not None:
             self.fruit.render(self.screen)
         pygame.display.update()
 
     def write_statistics(self, winning):
+        self.timer.stop_seconds()
         data = [winning, self.timer.elapsed, self.score, self.algo]
 
-        with open('statistics.csv', 'a', encoding='UTF8') as f:
+        with open('statistics.csv', 'a', encoding='UTF8', newline='') as f:
             writer = csv.writer(f)
             writer.writerow(data)

@@ -67,9 +67,8 @@ class Pacman(object):
             #     if not self.goal_road:
             #         self.goal_road = [self.target_block]
 
-    def player_update(self, dt):
+    def player_update(self, dt, direction):
         self.sprite.update(dt)
-        direction = self.get_valid_key
         self.position += self.directions[self.direction] * self.speed * dt
         if isinstance(self.target_block, PortalBlock) and isinstance(self.road_block, PortalBlock):
             self.road_block = self.target_block

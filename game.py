@@ -24,20 +24,15 @@ class GameController(object):
         if sum(input_actions) != 1:
             raise ValueError('Multiple input actions!')
 
-        # input_actions[0] == 1: do nothing
-        # input_actions[1] == 1: Up
-        # input_actions[2] == 1: Right
-        # input_actions[3] == 1: Down
-        # input_actions[4] == 1: Left
-        direction = STOP
+        if input_actions[0] == 1:
+            direction = LEFT
         if input_actions[1] == 1:
             direction = UP
         if input_actions[2] == 1:
             direction = RIGHT
         if input_actions[3] == 1:
             direction = DOWN
-        if input_actions[4] == 1:
-            direction = LEFT
+
         cur_score = self.score
         cur_lives = self.lives
         self.update(direction)
@@ -206,7 +201,7 @@ class GameController(object):
         self.points.render(self.screen)
         self.ghosts.render(self.screen)
         self.texts.render(self.screen)
-        #self.ghosts_finder.render(self.screen)
+        self.ghosts_finder.render(self.screen)
         if self.fruit is not None:
             self.fruit.render(self.screen)
         pygame.display.update()
